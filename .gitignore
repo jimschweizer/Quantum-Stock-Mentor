@@ -1,0 +1,23 @@
+# Environment & Secret Keys
+.env
+*.env
+*.pem
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build Outputs & Logs
+dist/
+dist-ssr/
+*.log
+logs/trades_*.csv
+.DS_Store
+
+# IDE & Tooling
+.vscode/
+.idea/
+.gemini/
