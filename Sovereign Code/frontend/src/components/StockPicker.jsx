@@ -73,10 +73,57 @@ export default function StockPicker({ analysis, loading, onRunAnalysis, userXP =
           </div>
         </div>
 
-        {/* Agent 2: Quant Analyst */}
-        <div className="glass-card">
-          <div className="badge badge-cyan" style={{ marginBottom: '12px' }}>📊 Quant Analyst</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+        {/* Agent 2: Quant Analyst & Multi-Horizon Trend Engine */}
+        <div className="glass-card" style={{ gridColumn: 'span 2' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className="badge badge-cyan">📊 Quant Analyst & Trend Engine</span>
+              <span className="badge badge-purple">{quant.trends?.alignment || 'Trend Confluence'}</span>
+            </div>
+            <small style={{ color: 'var(--text-muted)' }}>Multi-Timeframe Trend Confluence: <strong style={{ color: 'var(--accent-green)' }}>{quant.trends?.alignment_score || 70}%</strong></small>
+          </div>
+
+          {/* 1-Day, 7-Day, 30-Day Horizon Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            {/* 1-Day Trend */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>1-DAY TREND (Daily Noise)</span>
+                <span style={{ fontSize: '0.9rem' }}>{quant.trends?.day_1?.direction === 'UP' ? '📈' : '📉'}</span>
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: quant.trends?.day_1?.change_pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                {quant.trends?.day_1?.change_pct >= 0 ? '+' : ''}{quant.trends?.day_1?.change_pct || 0}%
+              </div>
+              <small style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Intraday momentum filter</small>
+            </div>
+
+            {/* 7-Day Trend */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>7-DAY SWING (Weekly)</span>
+                <span style={{ fontSize: '0.9rem' }}>{quant.trends?.day_7?.direction === 'UP' ? '📈' : '📉'}</span>
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: quant.trends?.day_7?.change_pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                {quant.trends?.day_7?.change_pct >= 0 ? '+' : ''}{quant.trends?.day_7?.change_pct || 0}%
+              </div>
+              <small style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>7-SMA: ${quant.sma7 || quant.sma20}</small>
+            </div>
+
+            {/* 30-Day Trend */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>30-DAY BASELINE (Monthly)</span>
+                <span style={{ fontSize: '0.9rem' }}>{quant.trends?.day_30?.direction === 'UP' ? '📈' : '📉'}</span>
+              </div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: quant.trends?.day_30?.change_pct >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                {quant.trends?.day_30?.change_pct >= 0 ? '+' : ''}{quant.trends?.day_30?.change_pct || 0}%
+              </div>
+              <small style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>30-SMA Anchor: ${quant.sma30 || quant.sma20}</small>
+            </div>
+          </div>
+
+          {/* Standard Indicators Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '16px' }}>
             <div>
               <small style={{ color: 'var(--text-muted)' }}>RSI (14-day)</small>
               <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: quant.rsi > 70 ? 'var(--accent-red)' : quant.rsi < 30 ? 'var(--accent-green)' : 'var(--accent-cyan)' }}>
@@ -84,8 +131,10 @@ export default function StockPicker({ analysis, loading, onRunAnalysis, userXP =
               </div>
             </div>
             <div>
-              <small style={{ color: 'var(--text-muted)' }}>20-Day SMA</small>
-              <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>${quant.sma20}</div>
+              <small style={{ color: 'var(--text-muted)' }}>Support / Resistance</small>
+              <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
+                ${quant.key_levels?.support} / ${quant.key_levels?.resistance}
+              </div>
             </div>
             <div>
               <small style={{ color: 'var(--text-muted)' }}>Volatility</small>
@@ -98,9 +147,12 @@ export default function StockPicker({ analysis, loading, onRunAnalysis, userXP =
               </div>
             </div>
           </div>
+
           <div style={{ background: 'rgba(255,255,255,0.03)', padding: '12px', borderRadius: '8px', borderLeft: '3px solid var(--accent-cyan)' }}>
-            <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>🎓 RSI Insight:</small>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{quant.beginner_note}</p>
+            <small style={{ color: 'var(--accent-cyan)', fontWeight: 'bold' }}>🎓 Beginner to Intermediate Trend Insight:</small>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {quant.beginner_note} <strong>Multi-Horizon Rule:</strong> A 1-Day drop is often noise; confirm direction using 7-Day swing momentum and 30-Day monthly trend baseline before making order decisions.
+            </p>
           </div>
         </div>
 
@@ -147,6 +199,7 @@ export default function StockPicker({ analysis, loading, onRunAnalysis, userXP =
         </div>
 
       </div>
+
 
       {/* PORTFOLIO UPSKILLING SECTION: Beginner to Intermediate Stepper */}
       {upskill_tips && (

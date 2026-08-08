@@ -93,33 +93,67 @@ def analyze_quant_metrics(ticker, current_price, price_history=None):
         price_history[-1] = current_price
 
     rsi = calculate_rsi(price_history)
+    sma7 = calculate_sma(price_history, 7)
     sma20 = calculate_sma(price_history, 20)
+    sma30 = calculate_sma(price_history, 30)
     volatility = calculate_volatility(price_history)
     key_levels = compute_key_levels(price_history)
 
+    # Multi-horizon Trend Calculations (1-day, 7-day, 30-day)
+    p_curr = price_history[-1]
+    p_prev1 = price_history[-2] if len(price_history) >= 2 else p_curr
+    p_prev7 = price_history[-7] if len(price_history) >= 7 else price_history[0]
+    p_prev30 = price_history[0]
+
+    chg_1d = ((p_curr - p_prev1) / p_prev1) * 100.0 if p_prev1 > 0 else 0.0
+    chg_7d = ((p_curr - p_prev7) / p_prev7) * 100.0 if p_prev7 > 0 else 0.0
+    chg_30d = ((p_curr - p_prev30) / p_prev30) * 100.0 if p_prev30 > 0 else 0.0
+
+    pos_count = sum([1 for c in [chg_1d, chg_7d, chg_30d] if c >= 0])
+    if pos_count == 3:
+        alignment_label = "Strong Bullish Confluence (1D + 7D + 30D Aligned)"
+        alignment_score = 95
+    elif pos_count == 2:
+        alignment_label = "Moderate Bullish Bias (2/3 Timeframes Positive)"
+        alignment_score = 70
+    elif pos_count == 1:
+        alignment_label = "Consolidation / Mixed Signals (1/3 Timeframes Positive)"
+        alignment_score = 45
+    else:
+        alignment_label = "Bearish Pressure Across Timeframes (0/3 Positive)"
+        alignment_score = 20
+
     # Technical Score (0.0 to 1.0)
-    # Higher score when price > SMA20 and RSI is in sweet spot (45-65)
     rsi_score = 1.0 - abs(rsi - 55) / 50.0
     rsi_score = max(0.1, min(1.0, rsi_score))
     
-    sma_bias = 0.65 if current_price >= sma20 else 0.40
+    sma_bias = 0.65 if current_price >= sma30 else 0.40
     technical_score = round((rsi_score * 0.5) + (sma_bias * 0.5), 2)
     
     volume_score = round(min(1.0, max(0.3, random.uniform(0.5, 0.9))), 2)
-    trend_strength = round(min(1.0, max(0.2, (current_price / max(sma20, 0.01)) * 0.5)), 2)
+    trend_strength = round(min(1.0, max(0.2, (current_price / max(sma30, 0.01)) * 0.5)), 2)
     probability_score = round((technical_score * 0.4) + (volume_score * 0.3) + (trend_strength * 0.3), 2)
 
     return {
         "ticker": ticker,
         "current_price": current_price,
         "rsi": rsi,
+        "sma7": sma7,
         "sma20": sma20,
+        "sma30": sma30,
         "volatility_pct": volatility,
         "technical_score": technical_score,
         "volume_score": volume_score,
         "trend_strength": trend_strength,
         "probability_score": probability_score,
         "key_levels": key_levels,
+        "trends": {
+            "day_1": {"change_pct": round(chg_1d, 2), "direction": "UP" if chg_1d >= 0 else "DOWN"},
+            "day_7": {"sma": sma7, "change_pct": round(chg_7d, 2), "direction": "UP" if chg_7d >= 0 else "DOWN"},
+            "day_30": {"sma": sma30, "change_pct": round(chg_30d, 2), "direction": "UP" if chg_30d >= 0 else "DOWN"},
+            "alignment": alignment_label,
+            "alignment_score": alignment_score
+        },
         "beginner_note": (
             f"RSI is at {rsi}. " +
             ("Overbought (>70) - potential short-term pull back." if rsi > 70 else
@@ -127,3 +161,4 @@ def analyze_quant_metrics(ticker, current_price, price_history=None):
              "Healthy momentum band (30-70) indicating steady price action.")
         )
     }
+

@@ -15,6 +15,8 @@ def test_pipeline():
     print("\n--- 2. Testing Quant Engine (IONQ) ---")
     quant = analyze_quant_metrics("IONQ", 14.85)
     print(f"IONQ RSI: {quant['rsi']}, Technical Score: {quant['technical_score']}")
+    print(f"Trends 1D: {quant['trends']['day_1']['change_pct']}%, 7D: {quant['trends']['day_7']['change_pct']}%, 30D: {quant['trends']['day_30']['change_pct']}%")
+    print(f"Alignment: {quant['trends']['alignment']}")
     
     print("\n--- 3. Testing Risk Engine (IONQ) ---")
     risk = evaluate_risk("IONQ", 14.85, account_size=10000, risk_tolerance_pct=2.0)

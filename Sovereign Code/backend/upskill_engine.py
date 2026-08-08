@@ -12,6 +12,8 @@ def get_stock_upskill_tips(ticker, stock_info, quant_data, risk_data):
     rsi = quant_data.get("rsi", 50)
     volatility = quant_data.get("volatility_pct", 5.0)
     price = stock_info.get("price", 15.0)
+    trends = quant_data.get("trends", {})
+    alignment_str = trends.get("alignment", "Confluence Check")
     is_prairie_giant = "prairie_role" in stock_info or ticker_upper in ["IBM", "NVDA", "MSFT", "GOOGL"]
     
     # Baseline Beta estimate based on sector profile
@@ -20,23 +22,23 @@ def get_stock_upskill_tips(ticker, stock_info, quant_data, risk_data):
     # Step 1: Baseline Foundation (Beginner)
     step1_title = "Step 1: Metric Foundation (Beginner)"
     step1_desc = (
-        f"For {ticker_upper}, your primary anchor is RSI ({rsi}) and current price (${price:.2f}). "
-        f"In beginner trading, RSI below 30 signals oversold conditions, while above 70 suggests overbought territory."
+        f"For {ticker_upper}, your primary anchor is RSI ({rsi}) and 1-Day price change ({trends.get('day_1', {}).get('change_pct', 0)}%). "
+        f"In beginner trading, avoid knee-jerk reactions to single-day noise. RSI below 30 signals oversold, while above 70 suggests overbought."
     )
 
-    # Step 2: Intermediate Technical & Valuation Upgrade
-    step2_title = "Step 2: Intermediate Technical & Valuation Upgrade"
+    # Step 2: Intermediate Technical & Multi-Horizon Trend Alignment
+    step2_title = "Step 2: Multi-Horizon Trend (1D, 7D, 30D) & Valuation Upgrade"
     if is_prairie_giant:
         step2_desc = (
-            f"Intermediate Upgrade: {ticker_upper} operates with Beta ~{beta:.2f} (lower relative volatility). "
-            f"Instead of relying on single RSI readings, check for RSI Divergence (higher price highs with lower RSI highs) "
-            f"and evaluate Price-to-Earnings (P/E) or Price-to-Sales (P/S) relative to historic tech sector averages."
+            f"Intermediate Upgrade: Current trend alignment is '{alignment_str}'. "
+            f"Analyze 7-Day swing ({trends.get('day_7', {}).get('change_pct', 0)}%) and 30-Day baseline ({trends.get('day_30', {}).get('change_pct', 0)}%). "
+            f"Ensure 1D momentum does not fight the broader 30-Day trend baseline before entering positions."
         )
     else:
         step2_desc = (
             f"Intermediate Upgrade: Pure-Play Quantum stocks like {ticker_upper} experience high Beta (~{beta:.2f}) and {volatility}% volatility. "
-            f"Never rely on static percentage stop-losses; instead, scale stop-loss distance using Average True Range (ATR) "
-            f"or recent Support levels (${quant_data.get('key_levels', {}).get('support', price * 0.9):.2f}) to avoid getting stopped out by normal market noise."
+            f"Current trend alignment is '{alignment_str}'. Use 30-Day SMA (${quant_data.get('sma30', price):.2f}) and ATR/Support "
+            f"(${quant_data.get('key_levels', {}).get('support', price * 0.9):.2f}) to avoid getting stopped out by 1-Day intraday noise."
         )
 
     # Step 3: Portfolio Correlation & Hedging Strategy
@@ -63,6 +65,10 @@ def get_stock_upskill_tips(ticker, stock_info, quant_data, risk_data):
         {
             "id": "rsi_check",
             "label": f"Confirm RSI ({rsi}) is not overbought (>70) prior to market buy order placement."
+        },
+        {
+            "id": "trend_check",
+            "label": f"Verify Multi-Timeframe Trend Confluence: 1D ({trends.get('day_1', {}).get('direction', 'UP')}), 7D ({trends.get('day_7', {}).get('direction', 'UP')}), 30D ({trends.get('day_30', {}).get('direction', 'UP')}) — Status: {alignment_str}."
         },
         {
             "id": "stop_loss_check",
@@ -99,3 +105,4 @@ def get_stock_upskill_tips(ticker, stock_info, quant_data, risk_data):
             "checklist": checklist
         }
     }
+

@@ -89,9 +89,23 @@ export default function App() {
           },
           quant: {
             rsi: 54.2,
+            sma7: (stockInfo.price * 0.98).toFixed(2),
             sma20: (stockInfo.price * 0.96).toFixed(2),
+            sma30: (stockInfo.price * 0.94).toFixed(2),
             volatility_pct: 4.8,
             probability_score: 0.78,
+            key_levels: {
+              pivot: stockInfo.price.toFixed(2),
+              support: (stockInfo.price * 0.92).toFixed(2),
+              resistance: (stockInfo.price * 1.08).toFixed(2)
+            },
+            trends: {
+              day_1: { change_pct: 1.45, direction: "UP" },
+              day_7: { change_pct: 3.20, direction: "UP" },
+              day_30: { change_pct: 8.75, direction: "UP" },
+              alignment: "Strong Bullish Confluence (1D + 7D + 30D Aligned)",
+              alignment_score: 95
+            },
             beginner_note: `RSI is healthy at 54.2, showing steady momentum without being overbought.`
           },
           sentiment: {
