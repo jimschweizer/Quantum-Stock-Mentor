@@ -15,13 +15,14 @@
 
 - ⚡ **Portfolio Upskilling Engine (Beginner ➔ Intermediate)**:
   - **4-Step Progressive Improvement Tips**: Tailored guidance for *every stock pick* covering Baseline Metrics, Intermediate Technicals/Valuation, Portfolio Hedging, and Execution Discipline.
+  - **Multi-Horizon Trend Learning Analytics (1D, 7D, 30D)**: Real-time 1-Day (Daily Noise), 7-Day (Weekly Swing), and 30-Day (Monthly Baseline Anchor) price trends paired with a Multi-Timeframe Alignment Score (0-100%) to educate traders on avoiding single-day noise traps.
   - **Interactive Pre-Trade Checklist**: Actionable pre-order verification steps that reward +50 XP per item with live analysis progress tracking.
   - **Intermediate Trading Academy Track**: Deep dives into Beta ($\beta$) & Volatility Hedging, RSI Divergence & False Breakouts, and ATR Dynamic Stop-Loss Sizing.
   - **Risk Upskill Spotlight Widget**: Interactive comparison contrasting naive fixed position sizing against quant volatility-adjusted position sizing.
 
 - 🤖 **5-Agent Swarm Intelligence**:
   1. 👑 **Trading Director**: Synthesizes market data, technical scores, and news sentiment to generate buy/hold/sell investment theses using live **OpenAI GPT-4o** or **Anthropic Claude 3.5 Sonnet**.
-  2. 📊 **Quant Analyst**: Calculates Relative Strength Index (RSI), 20-day Simple Moving Averages (SMA), Volatility, Probability Scores, and Pivot/Support/Resistance levels.
+  2. 📊 **Quant Analyst & Multi-Horizon Trend Engine**: Calculates Relative Strength Index (RSI), 1-Day, 7-Day, and 30-Day Simple Moving Averages (SMA), Volatility, Multi-Timeframe Confluence, Probability Scores, and Pivot/Support/Resistance levels.
   3. 🌐 **Sentiment Agent**: Gauges news media, retail community, and institutional analyst sentiment (0 to 100 scale).
   4. 🛡️ **Risk Manager**: Enforces Wall Street's **1-2% Portfolio Risk Rule**, dynamic position sizing, maximum drawdown estimation, and stop-loss placement.
   5. 🎫 **Execution Agent**: Formats automated paper trading limit order tickets with protective safety nets.

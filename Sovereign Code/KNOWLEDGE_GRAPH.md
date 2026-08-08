@@ -36,7 +36,7 @@ graph TD
     end
 
     subgraph Analytics_Engines ["Quant, Risk & Upskilling Engines"]
-        Quant --> QuantEngine["quant_engine.py (RSI, SMA20, Volatility, Key Levels)"]
+        Quant --> QuantEngine["quant_engine.py (RSI, 1D/7D/30D SMAs, Trend Alignment, Volatility, Key Levels)"]
         Risk --> RiskEngine["risk_engine.py (1-2% Capital Risk Rule, Stop Loss)"]
         Backend --> UpskillEngine["upskill_engine.py (4-Step Stock Pick Upskill Tips & Checklist)"]
     end
@@ -114,8 +114,14 @@ graph TD
     PriceData["Historical & Live Stock Price Data"] --> QuantCalc["quant_engine.py"]
     
     QuantCalc --> RSI["RSI (14-Day Momentum)"]
-    QuantCalc --> SMA["SMA (20-Day Simple Moving Average)"]
+    QuantCalc --> Trends["Multi-Horizon Trends (1D, 7D, 30D)"]
     QuantCalc --> Vol["Volatility (% Standard Deviation)"]
+
+    Trends --> D1["1D: Daily Noise Filter"]
+    Trends --> D7["7D: Weekly Swing Momentum"]
+    Trends --> D30["30D: Monthly Baseline Anchor"]
+
+    D1 & D7 & D30 --> Confluence["Trend Alignment Score (0-100%)"]
 
     RSI -->|RSI > 70| Overbought["Overbought Warning (Pullback Risk)"]
     RSI -->|RSI < 30| Oversold["Oversold Opportunity (Rebound Signal)"]
