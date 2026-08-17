@@ -19,7 +19,8 @@ def evaluate_risk(ticker, current_price, account_size=10000.0, risk_tolerance_pc
     risk_per_share = current_price - stop_loss_price
     
     if risk_per_share > 0:
-        recommended_shares = int(max_dollar_risk / risk_per_share)
+        # Floor at 1 share (AGENTS.md contract): tiny accounts must still be able to size a position
+        recommended_shares = max(1, int(max_dollar_risk / risk_per_share))
     else:
         recommended_shares = 1
 

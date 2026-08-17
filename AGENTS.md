@@ -65,15 +65,16 @@ RJ-Stock/
 ├── Sovereign Code/                   # ★ ACTIVE CODEBASE — all work happens here
 │   ├── KNOWLEDGE_GRAPH.md            # Architecture diagrams, ER matrix, domain graph
 │   ├── backend/                      # Python REST API & Multi-Agent Swarm Core
-│   │   ├── app.py                    # HTTP server (http.server, port 8000)
+│   │   ├── app.py                    # Threaded HTTP server (http.server + ThreadingMixIn, port 8000)
 │   │   ├── agents.py                 # 5-Agent pipeline + OpenAI/Anthropic/Local fallback
-│   │   ├── config.py                 # Stock universe definitions & ticker metadata
-│   │   ├── data_fetcher.py           # Universe & ticker lookup functions
-│   │   ├── quant_engine.py           # RSI, SMA, Volatility, Key Levels, Multi-Horizon Trends
+│   │   ├── config.py                 # Stock universe definitions & ticker metadata (offline baseline prices)
+│   │   ├── data_fetcher.py           # Live OHLCV fetcher: Alpha Vantage → JSON cache → seeded simulation
+│   │   ├── quant_engine.py           # RSI, SMA, Volatility, Key Levels (OHLC-aware), Multi-Horizon Trends
 │   │   ├── risk_engine.py            # Position sizing, stop-loss, take-profit (1-2% rule)
 │   │   ├── upskill_engine.py         # 4-Step progressive trader education + checklist
 │   │   ├── quantum_prairie.py        # Midwest Quantum ecosystem knowledge base
 │   │   └── test_backend.py           # Pipeline verification script
+│   ├── data/                         # 🗄️ Market data cache (gitignored JSON per ticker)
 │   └── frontend/                     # Vite + React Glassmorphic UI Dashboard
 │       ├── package.json              # React 19.2.8, Vite 8.2.0, oxlint 1.75.0
 │       ├── vite.config.js            # @vitejs/plugin-react 6.0.4
@@ -111,24 +112,44 @@ app.py ──imports──▶ agents.py ──imports──▶ config.py
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/stocks` | Returns full quantum stock universe (pure-play + prairie giants) |
-| `GET` | `/api/analyze/<ticker>` | Runs the complete 5-agent swarm pipeline for a ticker |
+| `GET` | `/api/stocks` | Returns full quantum stock universe (pure-play + prairie giants) with live-price overlay from cache |
+| `GET` | `/api/analyze/<ticker>` | Runs the complete 5-agent swarm pipeline for a ticker (real OHLCV when available) |
 | `GET` | `/api/quantum-prairie` | Returns Quantum Prairie ecosystem metadata |
 | `POST` | `/api/simulate-trade` | Simulates paper trade execution (body: `{ ticker, action, quantity, entry_price }`) |
+| `POST` | `/api/refresh-data` | Forces market data re-fetch (body: `{ "ticker": "IONQ" }` or `{ "ticker": "ALL" }`) |
 | `OPTIONS` | `*` | CORS preflight handler |
+
+### Market Data Pipeline (Live OHLCV → Cache → Simulation)
+
+`data_fetcher.py` is the single source of truth for price data. Strategy for `fetch_price_history(ticker)`:
+
+```
+1. Fresh disk cache  → serve immediately (no API call)           → source: "live", stale: false
+2. Alpha Vantage API → TIME_SERIES_DAILY (free tier, .env key)   → source: "live", stale: false
+3. Stale disk cache  → API failed, old live data is better than sim → source: "live", stale: true
+4. Seeded simulation → no key / rate-limited / offline           → source: "simulated"
+```
+
+- **Cache**: `Sovereign Code/data/{TICKER}_daily.json` (gitignored), 6-hour TTL (`_DAILY_CACHE_TTL_SECONDS`).
+- **Staleness contract**: every data dict carries `source` (`live`/`simulated`), `last_updated`, and `stale` (True only when serving old live data past TTL). The analyze response mirrors these as `data_source` / `last_updated` / `data_stale`; the frontend badge shows 🟢 Live Data / 🟠 Cached (Outdated) / 🟡 Simulated.
+- **Startup warm-up**: `run_server()` launches a background daemon thread (`data_fetcher.warm_up_market_cache()`) that pre-fetches any ticker lacking a fresh cache — fresh caches are skipped, preserving the free-tier quota. After startup, fetching is on-demand (per-ticker via `/api/analyze`, or bulk via `/api/refresh-data`).
+- **Offline-first preserved**: UI fallbacks unchanged; every fetch failure degrades gracefully.
 
 ### Agent Pipeline — Exact Sequential Execution Order
 
 When `/api/analyze/<ticker>` is called, `run_full_agent_analysis()` runs these steps **in order**:
 
 ```
-Step 1: Quant-Analyst    → analyze_quant_metrics()     → RSI, SMAs, Volatility, Key Levels, Trends
-Step 2: Sentiment-Agent  → run_sentiment_agent()        → Sentiment Score 0-100
-Step 3: Risk-Manager     → evaluate_risk()              → Shares, Stop-Loss, Take-Profit
-Step 4: Trading-Director → run_trading_director()       → BUY/HOLD/SELL + Thesis
-Step 5: Execution-Agent  → run_execution_agent()        → Paper Trade Limit Order Ticket
-Step 6: Upskill-Engine   → get_stock_upskill_tips()     → 4-Step Education + Checklist
+Step 0: Market-Data    → data_fetcher.fetch_price_history() → real OHLCV (fresh cache → Alpha Vantage → stale cache → seeded sim)
+Step 1: Quant-Analyst  → analyze_quant_metrics()           → RSI, SMAs, Volatility, Key Levels, Trends
+Step 2: Sentiment-Agent → run_sentiment_agent()            → Sentiment Score 0-100
+Step 3: Risk-Manager   → evaluate_risk()                   → Shares, Stop-Loss, Take-Profit
+Step 4: Trading-Director → run_trading_director()          → BUY/HOLD/SELL + Thesis
+Step 5: Execution-Agent → run_execution_agent()            → Paper Trade Limit Order Ticket
+Step 6: Upskill-Engine → get_stock_upskill_tips()          → 4-Step Education + Checklist
 ```
+
+The analyze response carries `data_source` (`live`/`simulated`), `last_updated`, and `data_stale` so the UI can always show data provenance.
 
 ### LLM Cascading Fallback
 
@@ -175,7 +196,8 @@ Expected LLM JSON response schema: `{ "recommendation": str, "market_thesis": st
 
 ### Deterministic Simulation Fallback
 
-When price history has fewer than 15 data points, the quant engine generates a **30-day random walk** seeded with `sum(ord(c) for c in ticker)`. This ensures identical, repeatable metrics across sessions for testing and debugging.
+- **Pipeline path**: when the Alpha Vantage key is absent, rate-limited, or offline, `data_fetcher._generate_simulated_history()` produces a **180-day seeded OHLC random walk** (`seed = sum(ord(c) for c in ticker)`, last close anchored to config price) so the full pipeline still runs reproducibly.
+- **Direct engine path**: when `analyze_quant_metrics()` is called with fewer than 15 price points, it generates a **30-day random walk** with the same seeding rule. This ensures identical, repeatable metrics across sessions for testing and debugging.
 
 ---
 
@@ -275,8 +297,11 @@ When price history has fewer than 15 data points, the quant engine generates a *
 ## 🧪 Testing & Verification
 
 ```powershell
-# Run backend pipeline test
+# Run backend pipeline smoke test
 python "Sovereign Code/backend/test_backend.py"
+
+# Run automated unit & integration tests (stdlib unittest, no pip deps)
+python -m unittest discover -s "Sovereign Code/backend/tests"
 
 # Start backend server (port 8000)
 python "Sovereign Code/backend/app.py"
@@ -295,6 +320,7 @@ npm run lint
 ```env
 OPENAI_API_KEY="sk-proj-..."       # Required for GPT-4o-mini thesis generation
 ANTHROPIC_API_KEY=""                # Optional fallback for Claude 3.5 Sonnet
+ALPHA_VANTAGE_API_KEY=""            # Optional live market data (free tier at alphavantage.co; empty = simulation mode)
 WORKSPACE_DIR="agent_workspace"    # Agent workspace directory
 WALLET_PRIVATE_KEY=""              # Reserved for future use
 ```
@@ -307,6 +333,8 @@ WALLET_PRIVATE_KEY=""              # Reserved for future use
 |-------|-----------|-----|
 | `ReferenceError: None is not defined` in StockPicker.jsx | Python `None` literal used in JavaScript | Replace with `null` in all `.jsx` files |
 | Multi-horizon trends not rendering | Missing 1D/7D/30D data in analyze endpoint | Added trend calculations to `quant_engine.py`, wired through `agents.py` |
+| Stale market data served as "Live" indefinitely | Cache had no freshness check; any existing cache was returned forever | Added 6h TTL (`_is_cache_fresh`) + `stale` flag; UI badge shows 🟠 Cached (Outdated) |
+| `quant.data_source` said "live" for simulated history | `quant_engine` labels any ≥15-point series as live | `agents.py` overrides `quant_res["data_source"]` with the fetcher's actual source |
 
 ---
 

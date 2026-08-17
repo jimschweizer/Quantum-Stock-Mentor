@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function StockPicker({ analysis, loading, onRunAnalysis, userXP = 150, userSkillLevel = "Beginner Apprentice", onCompleteCheckitem }) {
+export default function StockPicker({ analysis, loading, onRunAnalysis, onRefreshData, dataFreshness, userXP = 150, userSkillLevel = "Beginner Apprentice", onCompleteCheckitem }) {
   const [checkedItems, setCheckedItems] = useState({});
 
   if (loading) {
@@ -51,9 +51,28 @@ export default function StockPicker({ analysis, loading, onRunAnalysis, userXP =
           <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>
             ${stock_info.price.toFixed(2)}
           </div>
-          <button className="btn-primary" onClick={onRunAnalysis} style={{ marginTop: '8px' }}>
-            🔄 Re-run Agent Swarm
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', justifyContent: 'flex-end' }}>
+            <span className={`badge ${dataFreshness?.source === 'live' ? (dataFreshness?.stale ? 'badge-amber' : 'badge-green') : 'badge-amber'}`}>
+              {dataFreshness?.source === 'live'
+                ? (dataFreshness?.stale ? '🟠 Cached (Outdated)' : '🟢 Live Data')
+                : '🟡 Simulated'}
+            </span>
+            {dataFreshness?.lastUpdated && (
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                {new Date(dataFreshness.lastUpdated).toLocaleString()}
+              </small>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '8px', justifyContent: 'flex-end' }}>
+            <button className="btn-primary" onClick={onRunAnalysis}>
+              🔄 Re-run Agent Swarm
+            </button>
+            {onRefreshData && (
+              <button className="btn-primary" onClick={onRefreshData} style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+                📡 Refresh Market Data
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

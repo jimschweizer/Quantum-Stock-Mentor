@@ -35,15 +35,16 @@ RJ-Stock/
 ├── Sovereign Code/                   # ★ ACTIVE CODEBASE — all new/modified code goes here
 │   ├── KNOWLEDGE_GRAPH.md            # Architecture diagrams, ER matrix, upskill path, and domain graph
 │   ├── backend/                      # Python REST API & Multi-Agent Swarm Core
-│   │   ├── app.py                    # Zero-dependency HTTP server (http.server, Port 8000)
+│   │   ├── app.py                    # Zero-dependency threaded HTTP server (http.server + ThreadingMixIn, Port 8000)
 │   │   ├── agents.py                 # 5-Agent Pipeline + OpenAI/Anthropic/Local fallback cascade
 │   │   ├── config.py                 # Stock universe definitions (QUANTUM_PURE_PLAY, QUANTUM_PRAIRIE_GIANTS)
-│   │   ├── data_fetcher.py           # get_quantum_universe(), get_stock_detail(ticker)
-│   │   ├── quant_engine.py           # RSI, SMA, Volatility, Key Levels, Multi-Horizon Trends
+│   │   ├── data_fetcher.py           # Live OHLCV fetcher: Alpha Vantage → JSON cache → seeded simulation
+│   │   ├── quant_engine.py           # RSI, SMA, Volatility, Key Levels (OHLC-aware), Multi-Horizon Trends
 │   │   ├── risk_engine.py            # Position sizing, stop-loss, take-profit (1-2% rule)
 │   │   ├── upskill_engine.py         # 4-Step progressive trader education + pre-trade checklist
 │   │   ├── quantum_prairie.py        # Midwest Quantum ecosystem knowledge base
 │   │   └── test_backend.py           # Pipeline verification script
+│   ├── data/                         # Market data cache (gitignored JSON per ticker)
 │   └── frontend/                     # Vite + React Glassmorphic UI Dashboard
 │       ├── package.json              # React 19.2.8, Vite 8.2.0, oxlint 1.75.0
 │       ├── vite.config.js            # @vitejs/plugin-react 6.0.4
@@ -88,17 +89,25 @@ app.py ──imports──▶ agents.py ──imports──▶ config.py
   - `GOOGL` ($178.60, "Sycamore Processor & Quantum AI")
 - **`ALL_TICKERS`**: `List[str]` — Combined flat ticker list
 
-### `data_fetcher.py` — Data Access
-- `get_quantum_universe() -> Dict[str, List[Dict]]` — Returns `{ pure_play: [...], prairie_giants: [...] }`
-- `get_stock_detail(ticker: str) -> Optional[Dict]` — Lookup by ticker symbol
+### `data_fetcher.py` — Live Market Data Access (Alpha Vantage → Cache → Simulation)
+- `fetch_price_history(ticker, days=180) -> Dict` — Primary entry: **fresh cache → Alpha Vantage API → stale cache → seeded simulation**; returns `{dates, open, high, low, close, volume, source, last_updated, stale}`
+- `refresh_ticker_data(ticker) -> Dict` — Forces API re-fetch, bypassing cache
+- `get_current_price(ticker) -> (float, str)` — Latest close + source (`"live"` / `"simulated"`)
+- `get_quantum_universe() -> Dict[str, List[Dict]]` — Universe with live-price overlay from cache
+- `get_stock_detail(ticker: str) -> Optional[Dict]` — Lookup by ticker symbol (live overlay if cached)
+- `_fetch_from_alpha_vantage(ticker)` — `TIME_SERIES_DAILY` via `urllib.request` (free tier key from `.env`)
+- `_generate_simulated_history(ticker, price, days)` — Deterministic 180-day seeded OHLC random walk
 
-### `quant_engine.py` — Technical Analysis Engine (165 lines)
+**Cache:** `Sovereign Code/data/{TICKER}_daily.json`, 6h TTL (`_DAILY_CACHE_TTL_SECONDS`). `stale: true` flags old live data served after TTL when the API is unreachable.
+
+### `quant_engine.py` — Technical Analysis Engine (210 lines)
 **Functions:**
 - `calculate_rsi(prices, period=14) -> float` — Wilder's smoothed RSI
 - `calculate_sma(prices, period=20) -> float` — Simple Moving Average
 - `calculate_volatility(prices) -> float` — Percentage standard deviation
-- `compute_key_levels(prices) -> Dict[str, float]` — Floor pivot, support, resistance
-- `analyze_quant_metrics(ticker, current_price, price_history=None) -> Dict` — Full analysis including multi-horizon trends
+- `compute_key_levels(prices) -> Dict[str, float]` — Floor pivot, support, resistance (close-only, legacy)
+- `compute_key_levels_ohlc(highs, lows, closes) -> Dict[str, float]` — Floor pivot from real High/Low/Close
+- `analyze_quant_metrics(ticker, current_price, price_history=None, ohlc_data=None) -> Dict` — Full analysis including multi-horizon trends, `data_source` field, and `(ticker, date)`-seeded volume score
 
 **Key Algorithms & Formulas:**
 
@@ -176,6 +185,8 @@ app.py ──imports──▶ agents.py ──imports──▶ config.py
 - `run_execution_agent(ticker, current_price, risk_data) -> Dict`
 - `run_full_agent_analysis(ticker, account_size=10000.0, risk_tolerance=2.0) -> Dict`
 
+**Live Data Wiring (Step 0):** `run_full_agent_analysis` calls `data_fetcher.fetch_price_history(ticker)` first — live closes feed RSI/SMA/volatility/trends, live OHLC feeds pivot calculation, and the response carries `data_source` (`live`/`simulated`), `last_updated`, and `data_stale`. `quant_res["data_source"]` is overridden to match the fetcher's actual source.
+
 **LLM API Integration Details:**
 
 | Provider | Endpoint | Model | Key Parameters |
@@ -196,22 +207,25 @@ app.py ──imports──▶ agents.py ──imports──▶ config.py
 
 **Expected LLM JSON Schema:** `{ recommendation, market_thesis, beginner_summary }`
 
-### `app.py` — Zero-Dependency REST API Server (104 lines)
-**Class:** `QuantumStockAPIHandler(BaseHTTPRequestHandler)`
+### `app.py` — Zero-Dependency REST API Server (threaded, 141 lines)
+**Class:** `QuantumStockAPIHandler(BaseHTTPRequestHandler)` served by `ThreadedHTTPServer(ThreadingMixIn, HTTPServer)`
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/api/stocks` | Returns quantum stock universe |
-| GET | `/api/analyze/<ticker>` | Runs full 5-agent swarm pipeline |
+| GET | `/api/stocks` | Returns quantum stock universe with live-price overlay from cache |
+| GET | `/api/analyze/<ticker>` | Runs full 5-agent swarm pipeline (real OHLCV when available) |
 | GET | `/api/quantum-prairie` | Returns Quantum Prairie ecosystem data |
-| POST | `/api/simulate-trade` | Simulates paper trade execution |
+| POST | `/api/simulate-trade` | Simulates paper trade execution (unique order id via `time.time()`) |
+| POST | `/api/refresh-data` | Forces market data re-fetch (`{ "ticker": "IONQ" }` or `{ "ticker": "ALL" }`) |
 | OPTIONS | `*` | CORS preflight (Access-Control-Allow-Origin: *) |
 
-**Server:** `http.server.HTTPServer` on port `8000`
+**Server:** `ThreadingMixIn + http.server.HTTPServer` on port `8000` (concurrent request handling)
+**Startup warm-up:** a background daemon thread calls `data_fetcher.warm_up_market_cache()` to prime the cache (skips tickers with fresh caches; after startup, fetching is on-demand per ticker or via `/api/refresh-data`).
 
 ### Agent Pipeline Execution Order (Sequential)
 ```
 GET /api/analyze/<ticker>
+  → 0. Market-Data     (data_fetcher.fetch_price_history)  → real OHLCV (cache → Alpha Vantage → stale cache → sim)
   → 1. Quant-Analyst    (analyze_quant_metrics)     → RSI, SMAs, Volatility, Key Levels, Trends
   → 2. Sentiment-Agent  (run_sentiment_agent)        → Sentiment Score 0-100
   → 3. Risk-Manager     (evaluate_risk)              → Shares, Stop-Loss, Take-Profit
@@ -219,6 +233,7 @@ GET /api/analyze/<ticker>
   → 5. Execution-Agent  (run_execution_agent)        → Paper Trade Limit Order Ticket
   → 6. Upskill-Engine   (get_stock_upskill_tips)     → 4-Step Education + Checklist
 ```
+Response includes `data_source`, `last_updated`, and `data_stale` for data provenance.
 
 ---
 
@@ -373,6 +388,9 @@ Appends `_SYSTEM_SUFFIX` with live formatted date/time to all system prompts.
 # Backend (Port 8000)
 python "Sovereign Code/backend/app.py"
 
+# Automated tests (stdlib unittest, no pip deps)
+python -m unittest discover -s "Sovereign Code/backend/tests"
+
 # Frontend (Port 5173)
 cd "Sovereign Code/frontend"
 npm install
@@ -383,6 +401,7 @@ npm run dev
 ```env
 OPENAI_API_KEY="sk-proj-..."
 # ANTHROPIC_API_KEY=""
+# ALPHA_VANTAGE_API_KEY=""          # Optional: live market data (free tier at alphavantage.co; empty = simulation mode)
 WORKSPACE_DIR="agent_workspace"
 WALLET_PRIVATE_KEY=""
 ```
@@ -395,3 +414,5 @@ WALLET_PRIVATE_KEY=""
 |-------|-----------|------------|--------|
 | `ReferenceError: None is not defined` in StockPicker.jsx | Python `None` literal used in JavaScript context | Replaced with JavaScript `null` | — |
 | Multi-horizon trends not rendering | Missing 1D/7D/30D trend data in analyze endpoint | Added trend calculations to `quant_engine.py`, wired through `agents.py` pipeline | `c0a2d0a` |
+| Stale market data served as "Live" indefinitely | Cache had no freshness check; any existing cache was returned forever | Added 6h TTL (`_is_cache_fresh`) + `stale` flag; UI shows 🟠 Cached (Outdated) | — |
+| `quant.data_source` said "live" for simulated history | `quant_engine` labels any ≥15-point series as live | `agents.py` overrides `quant_res["data_source"]` with the fetcher's actual source | — |

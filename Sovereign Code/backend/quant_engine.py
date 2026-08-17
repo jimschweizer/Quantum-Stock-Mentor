@@ -5,6 +5,7 @@ Calculates RSI, Moving Averages, Volatility, Support/Resistance levels, and Tech
 
 import math
 import random
+import time
 
 def calculate_rsi(prices, period=14):
     """
@@ -56,7 +57,7 @@ def calculate_volatility(prices):
     return round((std_dev / mean) * 100, 2)
 
 def compute_key_levels(prices):
-    """Computes Pivot, Support, and Resistance levels based on high/low/close."""
+    """Computes Pivot, Support, and Resistance levels from close prices only (legacy)."""
     if not prices:
         return {"support": 0.0, "resistance": 0.0, "pivot": 0.0}
     
@@ -75,11 +76,42 @@ def compute_key_levels(prices):
         "resistance": round(resistance, 2)
     }
 
-def analyze_quant_metrics(ticker, current_price, price_history=None):
+def compute_key_levels_ohlc(highs, lows, closes):
+    """
+    Computes Pivot, Support, and Resistance levels using actual OHLC data.
+    Uses the most recent session's High, Low, Close for the floor pivot formula.
+    """
+    if not highs or not lows or not closes:
+        return {"support": 0.0, "resistance": 0.0, "pivot": 0.0}
+    
+    high = highs[-1]
+    low = lows[-1]
+    close = closes[-1]
+    
+    pivot = (high + low + close) / 3.0
+    resistance = (2 * pivot) - low
+    support = (2 * pivot) - high
+    
+    return {
+        "pivot": round(pivot, 2),
+        "support": round(max(0.1, support), 2),
+        "resistance": round(resistance, 2)
+    }
+
+def analyze_quant_metrics(ticker, current_price, price_history=None, ohlc_data=None):
     """
     Generates quantitative analysis scores for a stock ticker.
+
+    Args:
+        ticker: Stock ticker symbol.
+        current_price: Current/latest price.
+        price_history: Optional list of close prices (flat list).
+        ohlc_data: Optional dict with 'high', 'low', 'close' lists for proper pivot calc.
+
     If price_history is omitted, generates a deterministic simulation series.
     """
+    data_source = "simulated"
+
     if not price_history or len(price_history) < 15:
         # Generate representative 30-day price movement based on ticker seed
         seed = sum(ord(c) for c in ticker)
@@ -91,19 +123,29 @@ def analyze_quant_metrics(ticker, current_price, price_history=None):
             base = max(0.5, base * (1 + change))
             price_history.append(base)
         price_history[-1] = current_price
+        data_source = "simulated"
+    else:
+        data_source = "live"
 
     rsi = calculate_rsi(price_history)
     sma7 = calculate_sma(price_history, 7)
     sma20 = calculate_sma(price_history, 20)
     sma30 = calculate_sma(price_history, 30)
     volatility = calculate_volatility(price_history)
-    key_levels = compute_key_levels(price_history)
+
+    # Use OHLC pivot calc when real data is available, otherwise close-only
+    if ohlc_data and "high" in ohlc_data and "low" in ohlc_data and "close" in ohlc_data:
+        key_levels = compute_key_levels_ohlc(
+            ohlc_data["high"], ohlc_data["low"], ohlc_data["close"]
+        )
+    else:
+        key_levels = compute_key_levels(price_history)
 
     # Multi-horizon Trend Calculations (1-day, 7-day, 30-day)
     p_curr = price_history[-1]
     p_prev1 = price_history[-2] if len(price_history) >= 2 else p_curr
     p_prev7 = price_history[-7] if len(price_history) >= 7 else price_history[0]
-    p_prev30 = price_history[0]
+    p_prev30 = price_history[-30] if len(price_history) >= 30 else price_history[0]
 
     chg_1d = ((p_curr - p_prev1) / p_prev1) * 100.0 if p_prev1 > 0 else 0.0
     chg_7d = ((p_curr - p_prev7) / p_prev7) * 100.0 if p_prev7 > 0 else 0.0
@@ -130,6 +172,9 @@ def analyze_quant_metrics(ticker, current_price, price_history=None):
     sma_bias = 0.65 if current_price >= sma30 else 0.40
     technical_score = round((rsi_score * 0.5) + (sma_bias * 0.5), 2)
     
+    # Deterministic volume_score seeded from (ticker, date) — reproducible per day
+    vol_seed = sum(ord(c) for c in ticker) + int(time.strftime("%Y%m%d"))
+    random.seed(vol_seed)
     volume_score = round(min(1.0, max(0.3, random.uniform(0.5, 0.9))), 2)
     trend_strength = round(min(1.0, max(0.2, (current_price / max(sma30, 0.01)) * 0.5)), 2)
     probability_score = round((technical_score * 0.4) + (volume_score * 0.3) + (trend_strength * 0.3), 2)
@@ -137,6 +182,7 @@ def analyze_quant_metrics(ticker, current_price, price_history=None):
     return {
         "ticker": ticker,
         "current_price": current_price,
+        "data_source": data_source,
         "rsi": rsi,
         "sma7": sma7,
         "sma20": sma20,

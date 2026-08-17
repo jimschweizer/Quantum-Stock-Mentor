@@ -15,12 +15,14 @@ try:
     from .risk_engine import evaluate_risk
     from .quantum_prairie import get_quantum_prairie_summary
     from .upskill_engine import get_stock_upskill_tips
+    from . import data_fetcher
 except ImportError:
     from config import QUANTUM_PURE_PLAY, QUANTUM_PRAIRIE_GIANTS
     from quant_engine import analyze_quant_metrics
     from risk_engine import evaluate_risk
     from quantum_prairie import get_quantum_prairie_summary
     from upskill_engine import get_stock_upskill_tips
+    import data_fetcher
 
 def load_env_keys():
     """Parses root .env file for OPENAI_API_KEY and ANTHROPIC_API_KEY."""
@@ -297,6 +299,7 @@ def run_execution_agent(ticker, current_price, risk_data):
 def run_full_agent_analysis(ticker, account_size=10000.0, risk_tolerance=2.0):
     """
     Runs all 5 agents (Director, Quant, Sentiment, Risk, Execution) sequentially for a ticker.
+    Fetches live price data via data_fetcher when available.
     """
     all_stocks = QUANTUM_PURE_PLAY + QUANTUM_PRAIRIE_GIANTS
     stock_info = next((s for s in all_stocks if s["ticker"] == ticker.upper()), None)
@@ -310,10 +313,39 @@ def run_full_agent_analysis(ticker, account_size=10000.0, risk_tolerance=2.0):
             "quantum_focus": "Quantum Innovation"
         }
 
-    current_price = stock_info["price"]
-    
-    # Step 1: Quant Analyst
-    quant_res = analyze_quant_metrics(ticker, current_price)
+    # Fetch live price data (cache → API → simulation fallback)
+    price_data = data_fetcher.fetch_price_history(ticker)
+    close_prices = price_data.get("close", [])
+    data_source = price_data.get("source", "simulated")
+    last_updated = price_data.get("last_updated", None)
+
+    # Use live price as current price when available
+    if close_prices and data_source == "live":
+        current_price = close_prices[-1]
+        stock_info = dict(stock_info)  # shallow copy to avoid mutating config
+        stock_info["price"] = current_price
+    else:
+        current_price = stock_info["price"]
+
+    # Build OHLC data dict for proper pivot point calculation
+    ohlc_data = None
+    if data_source == "live" and "high" in price_data and "low" in price_data:
+        ohlc_data = {
+            "high": price_data["high"],
+            "low": price_data["low"],
+            "close": price_data["close"]
+        }
+
+    # Step 1: Quant Analyst (with live price history + OHLC when available)
+    quant_res = analyze_quant_metrics(
+        ticker, current_price,
+        price_history=close_prices if len(close_prices) >= 15 else None,
+        ohlc_data=ohlc_data
+    )
+    # H2 fix: quant_engine stamps "live" whenever >= 15 prices are supplied,
+    # even when they came from the simulation fallback — force the label to
+    # match the actual fetcher source so consumers never misread sim as live.
+    quant_res["data_source"] = data_source
     
     # Step 2: Sentiment Agent
     sentiment_res = run_sentiment_agent(stock_info)
@@ -344,5 +376,8 @@ def run_full_agent_analysis(ticker, account_size=10000.0, risk_tolerance=2.0):
         "sentiment": sentiment_res,
         "risk": risk_res,
         "execution": execution_res,
-        "upskill_tips": upskill_tips
+        "upskill_tips": upskill_tips,
+        "data_source": data_source,
+        "last_updated": last_updated,
+        "data_stale": bool(price_data.get("stale", False))
     }

@@ -41,6 +41,15 @@ graph TD
         Backend --> UpskillEngine["upskill_engine.py (4-Step Stock Pick Upskill Tips & Checklist)"]
     end
 
+    subgraph MarketData_Layer ["Live Market Data Layer (data_fetcher.py)"]
+        Backend --> DataFetcher["data_fetcher.py (fetch_price_history: fresh cache → Alpha Vantage → stale cache → seeded sim; warm-up thread on server start)"]
+        DataFetcher -->|TIME_SERIES_DAILY| AlphaVantage["Alpha Vantage API (free tier, key in .env)"]
+        DataFetcher -->|JSON cache| PriceCache["Disk Cache — Sovereign Code/data/{TICKER}_daily.json (6h TTL, stale-flagged)"]
+        DataFetcher -->|offline fallback| SeededSim["Seeded Random-Walk Simulation (deterministic per ticker)"]
+        DataFetcher -->|close prices + OHLC| QuantEngine
+        UI -->|POST /api/refresh-data| Backend
+    end
+
     subgraph Domain_KB ["Quantum Prairie & Stock Knowledge Base"]
         Director & PrairieHub --> PrairieDB["quantum_prairie.py (IQMP, CQE, Quantum Corridor)"]
         Director & TickerBar --> ConfigDB["config.py (Pure Play & Prairie Giant Tickers)"]
@@ -111,7 +120,7 @@ graph LR
 
 ```mermaid
 graph TD
-    PriceData["Historical & Live Stock Price Data"] --> QuantCalc["quant_engine.py"]
+    DataLayer["📡 Market Data Layer — data_fetcher.py (Alpha Vantage API → 6h disk cache → seeded simulation)"] --> QuantCalc["quant_engine.py"]
     
     QuantCalc --> RSI["RSI (14-Day Momentum)"]
     QuantCalc --> Trends["Multi-Horizon Trends (1D, 7D, 30D)"]
@@ -127,7 +136,7 @@ graph TD
     RSI -->|RSI < 30| Oversold["Oversold Opportunity (Rebound Signal)"]
     RSI -->|30 <= RSI <= 70| Healthy["Healthy Momentum Band"]
 
-    PriceData & Vol --> RiskCalc["risk_engine.py"]
+    Vol --> RiskCalc["risk_engine.py"]
     
     RiskCalc --> AccountRisk["1-2% Account Capital Risk Rule"]
     AccountRisk --> MaxDollarRisk["Max Dollar Risk = Account Size * Risk %"]
@@ -155,6 +164,11 @@ graph TD
 | **`StockPicker.jsx`** | `renders` | **5-Agent & Upskill Stepper** | Displays swarm results and interactive pre-trade checklist (+50 XP per item). |
 | **`TradingAcademy.jsx`**| `teaches` | **Beginner & Intermediate** | Teaches Beta hedging, RSI divergence, and ATR dynamic stop-losses. |
 | **`QuantRiskManager.jsx`**| `recalculates` | **Position Sizing** | Dynamically computes share count & contrasts naive vs quant risk sizing. |
+| **`data_fetcher.py`** | `fetches` | **Alpha Vantage API** | Pulls real OHLCV daily bars (`TIME_SERIES_DAILY`, free tier, key in `.env`). |
+| **`data_fetcher.py`** | `caches` | **Disk Cache (`Sovereign Code/data/`)** | Per-ticker JSON served while fresh (6h TTL); flagged `stale: true` when past TTL. |
+| **`data_fetcher.py`** | `falls back to` | **Seeded Simulation** | Deterministic OHLC random walk when API key absent, rate-limited, or offline. |
+| **`POST /api/refresh-data`** | `refreshes` | **Market Data Cache** | Forces API re-fetch for one ticker or `ALL`; powers the 📡 Refresh button. |
+| **`Quant-Analyst`** | `consumes` | **Live OHLCV** | RSI/SMA/Volatility/Trends from real closes; Pivot/S/R from real High/Low/Close. |
 
 ---
 
@@ -163,13 +177,15 @@ graph TD
 ```
 Sovereign Code/
 ├── backend/
-│   ├── app.py ─────────────► imports agents.py, quant_engine.py, risk_engine.py, upskill_engine.py, quantum_prairie.py, config.py
-│   ├── agents.py ──────────► imports quant_engine.py, risk_engine.py, upskill_engine.py, quantum_prairie.py, config.py
+│   ├── app.py ─────────────► imports agents.py, quant_engine.py, risk_engine.py, upskill_engine.py, quantum_prairie.py, config.py, data_fetcher.py
+│   ├── agents.py ──────────► imports quant_engine.py, risk_engine.py, upskill_engine.py, quantum_prairie.py, config.py, data_fetcher.py
+│   ├── data_fetcher.py ────► Alpha Vantage API (urllib) → disk cache (Sovereign Code/data/) → seeded simulation
 │   ├── upskill_engine.py ──► Stock-Specific Portfolio Upskilling Intelligence Module
-│   ├── quant_engine.py ────► Standalone Math Module
+│   ├── quant_engine.py ────► Standalone Math Module (OHLC-aware pivot calculation)
 │   ├── risk_engine.py ─────► Standalone Risk Matrix Module
 │   ├── quantum_prairie.py ─► Knowledge Base Metadata
-│   └── config.py ──────────► Ticker Definitions
+│   └── config.py ──────────► Ticker Definitions (static metadata + offline baseline prices)
+├── data/ ──────────────────► Market data cache (gitignored JSON per ticker)
 └── frontend/src/
     ├── App.jsx ────────────► imports TickerBar, StockPicker, QuantRiskManager, QuantumPrairieHub, TradeSimulator, TradingAcademy
     ├── components/

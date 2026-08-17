@@ -20,6 +20,12 @@
   - **Intermediate Trading Academy Track**: Deep dives into Beta ($\beta$) & Volatility Hedging, RSI Divergence & False Breakouts, and ATR Dynamic Stop-Loss Sizing.
   - **Risk Upskill Spotlight Widget**: Interactive comparison contrasting naive fixed position sizing against quant volatility-adjusted position sizing.
 
+- 📡 **Live Market Data (Alpha Vantage)**:
+  - Real OHLCV daily price history for all 8 tickers via the free Alpha Vantage API (`ALPHA_VANTAGE_API_KEY` in `.env`).
+  - Offline-first cache (`Sovereign Code/data/`, 6h TTL) with graceful degradation: **fresh cache → API → stale cache → deterministic simulation**.
+  - Startup warm-up: the server pre-fetches any ticker without a fresh cache on launch; after that, fetching is on-demand per ticker.
+  - Data provenance everywhere: 🟢 Live Data / 🟠 Cached (Outdated) / 🟡 Simulated badges with last-updated timestamps, plus a 📡 Refresh Market Data button.
+
 - 🤖 **5-Agent Swarm Intelligence**:
   1. 👑 **Trading Director**: Synthesizes market data, technical scores, and news sentiment to generate buy/hold/sell investment theses using live **OpenAI GPT-4o** or **Anthropic Claude 3.5 Sonnet**.
   2. 📊 **Quant Analyst & Multi-Horizon Trend Engine**: Calculates Relative Strength Index (RSI), 1-Day, 7-Day, and 30-Day Simple Moving Averages (SMA), Volatility, Multi-Timeframe Confluence, Probability Scores, and Pivot/Support/Resistance levels.
@@ -52,14 +58,16 @@ RJ-Stock/
 ├── Sovereign Code/
 │   ├── KNOWLEDGE_GRAPH.md        # System architecture, data flow & domain Knowledge Graph
 │   ├── backend/                  # Python REST API & Multi-Agent Swarm Core
-│   │   ├── app.py                # Zero-dependency Python HTTP server (Port 8000)
+│   │   ├── app.py                # Zero-dependency threaded Python HTTP server (Port 8000)
 │   │   ├── agents.py             # 5-Agent Pipeline with OpenAI & Anthropic API support
+│   │   ├── data_fetcher.py       # Live OHLCV fetcher (Alpha Vantage → JSON cache → seeded sim)
 │   │   ├── upskill_engine.py     # 4-Step Stock Pick Portfolio Upskilling Engine
-│   │   ├── quant_engine.py       # RSI, SMA, Volatility & Support/Resistance algorithms
+│   │   ├── quant_engine.py       # RSI, SMA, Volatility & Support/Resistance algorithms (OHLC-aware)
 │   │   ├── risk_engine.py        # Position sizing & Stop Loss math engine
 │   │   ├── quantum_prairie.py    # Midwest Quantum ecosystem knowledge base
 │   │   ├── config.py             # Stock universe definitions & ticker metadata
 │   │   └── test_backend.py       # Pipeline verification script
+│   ├── data/                     # Market data cache (gitignored)
 │   └── frontend/                 # Vite + React Glassmorphic UI Dashboard
 │       ├── src/
 │       │   ├── components/
@@ -90,7 +98,9 @@ Create or update your `.env` file in the root directory:
 ```env
 OPENAI_API_KEY="your-openai-api-key"
 # ANTHROPIC_API_KEY="your-anthropic-api-key"
+# ALPHA_VANTAGE_API_KEY="your-alphavantage-key"   # Optional: enables live market data (free at alphavantage.co)
 ```
+*Without an Alpha Vantage key the app runs in deterministic simulation mode (🟡 Simulated badges).*
 
 ### 2. Start the Backend API Server
 ```powershell

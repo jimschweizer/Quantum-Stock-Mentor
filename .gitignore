@@ -17,6 +17,12 @@ dist-ssr/
 logs/trades_*.csv
 .DS_Store
 
+# Market Data Cache
+Sovereign Code/data/
+
+# Test scratch dirs (leftover from sandboxed runs — deletable on a normal machine)
+Sovereign Code/backend/tests/.tmp_cache/
+
 # IDE & Tooling
 .vscode/
 .idea/

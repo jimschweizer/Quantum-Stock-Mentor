@@ -30,6 +30,7 @@ export default function App() {
   const [prairieData, setPrairieData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userXP, setUserXP] = useState(150); // XP points for completing upskill checklists
+  const [dataFreshness, setDataFreshness] = useState({ source: 'simulated', lastUpdated: null, stale: false });
 
   // Fetch stock universe & Prairie data on mount
   useEffect(() => {
@@ -71,6 +72,11 @@ export default function App() {
       .then(res => res.json())
       .then(data => {
         setAnalysis(data);
+        setDataFreshness({
+          source: data.data_source || 'simulated',
+          lastUpdated: data.last_updated || null,
+          stale: !!data.data_stale
+        });
         setLoading(false);
       })
       .catch(() => {
@@ -81,6 +87,8 @@ export default function App() {
         setAnalysis({
           ticker: ticker,
           stock_info: stockInfo,
+          data_source: 'simulated',
+          last_updated: null,
           director: {
             agent_name: "Trading-Director",
             recommendation: "BUY (Growth Accumulation)",
@@ -162,7 +170,20 @@ export default function App() {
           }
         });
         setLoading(false);
+        setDataFreshness({ source: 'simulated', lastUpdated: null, stale: false });
       });
+  };
+
+  // Refresh market data on-demand via Alpha Vantage
+  const refreshData = (ticker) => {
+    fetch('http://localhost:8000/api/refresh-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ticker })
+    })
+      .then(res => res.json())
+      .then(() => runAgentAnalysis(ticker))
+      .catch(err => console.warn('Refresh failed, using cached data:', err));
   };
 
   useEffect(() => {
@@ -221,6 +242,8 @@ export default function App() {
             analysis={analysis}
             loading={loading}
             onRunAnalysis={() => runAgentAnalysis(selectedTicker)}
+            onRefreshData={() => refreshData(selectedTicker)}
+            dataFreshness={dataFreshness}
             userXP={userXP}
             userSkillLevel={userSkillLevel}
             onCompleteCheckitem={handleCompleteCheckitem}
