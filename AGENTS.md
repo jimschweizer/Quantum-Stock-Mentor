@@ -306,10 +306,13 @@ python -m unittest discover -s "Sovereign Code/backend/tests"
 # Start backend server (port 8000)
 python "Sovereign Code/backend/app.py"
 
-# Start frontend dev server (port 5173)
+# Start frontend dev server (port 5173) — npm or npx
 cd "Sovereign Code/frontend"
-npm install
-npm run dev
+npm install            # one-time per checkout (npx still requires local node_modules)
+npm run dev            # npm form
+# npx form (runs the same local Vite): npx vite
+# NOTE: `npx --yes vite@8` alone fails on a fresh checkout (ERR_MODULE_NOT_FOUND:
+# vite.config.js imports 'vite' + '@vitejs/plugin-react' from local node_modules).
 
 # Lint frontend
 cd "Sovereign Code/frontend"

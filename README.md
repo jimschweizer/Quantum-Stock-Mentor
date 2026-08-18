@@ -109,11 +109,23 @@ python "Sovereign Code/backend/app.py"
 *Server starts on `http://localhost:8000`*
 
 ### 3. Start the Frontend Dashboard
+
+**Option A — npm (recommended):**
 ```powershell
 cd "Sovereign Code/frontend"
 npm install
 npm run dev
 ```
+
+**Option B — npx (no global install; runs the project's local Vite):**
+```powershell
+cd "Sovereign Code/frontend"
+npm install   # one-time per checkout — npx still needs local node_modules (see note)
+npx vite      # same as `npm run dev`, uses the locally installed Vite
+```
+
+> ⚠️ **npx caveat (empirically verified)**: `npx vite` only works **after** `npm install` has populated `node_modules`. Running `npx --yes vite@8` on a fresh checkout **fails** with `ERR_MODULE_NOT_FOUND: Cannot find package 'vite'` — `vite.config.js` imports `vite` and `@vitejs/plugin-react`, which resolve only from the local `node_modules` (npx's on-demand download provides the `vite` binary but not the config's imports). Run `npm install` once, then either `npm run dev` or `npx vite` works. Add `--host` to expose the dev server on your LAN: `npx vite --host` (or `npm run dev -- --host`).
+
 *Open `http://localhost:5173/` in your browser.*
 
 ---

@@ -39,10 +39,13 @@ Welcome to the initial beta release of **Quantum-Stock-Mentor**! This platform i
 # 1. Start Backend API (Port 8000)
 python "Sovereign Code/backend/app.py"
 
-# 2. Start Frontend Dev Server (Port 5173)
+# 2. Start Frontend Dev Server (Port 5173) — npm or npx
 cd "Sovereign Code/frontend"
-npm install
-npm run dev
+npm install        # one-time per checkout (npx still needs local node_modules)
+npm run dev        # npm form
+# npx form (runs the same local Vite): npx vite
+# NOTE: `npx --yes vite@8` alone fails on a fresh checkout — vite.config.js
+# imports 'vite' + '@vitejs/plugin-react' from local node_modules.
 ```
 
 ---
