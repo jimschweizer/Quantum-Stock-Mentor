@@ -16,6 +16,7 @@ This document is the **authoritative expert-level reference** for project **RJ-S
 5. **API Integrations**: Tested and integrated both **Anthropic Claude 3.5 Sonnet** and **OpenAI GPT-4o** APIs via root `.env` configuration.
 6. **Project Shutdown & Documentation**: Controlled shutdown of daemon processes and creation of `README.md` and `GEMINI.md`.
 7. **Multi-Horizon Trend Learning Analytics (1D, 7D, 30D)**: Implemented 1-Day (Daily Noise), 7-Day (Weekly Swing), and 30-Day (Monthly Baseline) trend analytics, alignment scoring (0-100%), and interactive UI cards in `StockPicker.jsx`. Committed and pushed to GitHub (`c0a2d0a`).
+8. **Order Type Literacy (Phase 1)**: Transformed the Trade Simulator from a single-action receipt printer into an interactive Order Type classroom. Added 5 selectable order types (Market, Limit, Stop, Stop-Limit, Trailing Stop) with inline education cards (Plain English, When Pros Use It, Watch Out), adaptive order ticket fields per type, contextual tips, and risk-level badges. New CSS system: `.order-type-grid`, `.order-type-card`, `.edu-card`, `.edu-watchout`, `.order-field-group`, `.badge-red`. Pure frontend change — zero backend modifications.
 
 ---
 
@@ -56,7 +57,7 @@ RJ-Stock/
 │               ├── StockPicker.jsx   # 5-Agent swarm dashboard + upskill stepper + trend grid
 │               ├── QuantRiskManager.jsx  # Interactive risk & position sizing calculator
 │               ├── QuantumPrairieHub.jsx # Midwest Quantum Prairie spotlight
-│               ├── TradeSimulator.jsx    # Paper trade order ticket simulator
+│               ├── TradeSimulator.jsx    # Order Type Literacy simulator (5 types + education cards)
 │               └── TradingAcademy.jsx    # Beginner & Intermediate lesson curriculum
 └── logs/                             # Runtime logs (gitignored)
 ```
@@ -255,7 +256,7 @@ Response includes `data_source`, `last_updated`, and `data_stale` for data prove
 | `StockPicker.jsx` | 5-Agent dashboard + upskill stepper | `analysis`, `loading`, `onRunAnalysis`, `userXP`, `userSkillLevel`, `onCompleteCheckitem` | `checkedItems: { [id]: bool }` |
 | `QuantRiskManager.jsx` | Interactive risk calculator | `ticker`, `price` | `accountSize` (1K-100K), `riskTolerancePct` (0.5-5%), `volatility` (2-15%) |
 | `QuantumPrairieHub.jsx` | Quantum Prairie spotlight | `prairieData` | Stateless |
-| `TradeSimulator.jsx` | Paper trade order simulator | `executionOrder`, `onSimulateTrade` | `orders: []`, `loading: bool` |
+| `TradeSimulator.jsx` | Order Type Literacy simulator (5 order types + inline education) | `executionOrder`, `onSimulateTrade` | `orders: []`, `loading: bool`, `selectedType: str` |
 | `TradingAcademy.jsx` | Educational lesson curriculum | — | `activeTab` ('beginner'/'intermediate'), `activeLesson` |
 
 ### Tab Navigation
@@ -298,6 +299,15 @@ Every frontend component includes **100% client-side fallback data** for offline
 - `.btn-primary`: Quantum gradient button, `translateY(-2px)` hover lift + cyan glow
 - `.dashboard-grid`: `grid-template-columns: repeat(auto-fit, minmax(320px, 1fr))`
 - `.xp-progress-bar`: Animated quantum gradient fill
+
+**Order Type Selector System:**
+- `.order-type-grid`: 5-column responsive grid for order type cards
+- `.order-type-card`: Selectable card with icon, label, risk badge; `.active` state has cyan glow
+- `.ot-risk.low|medium|high`: Color-coded risk badges (green/amber/red)
+- `.edu-card`: Education explainer panel with `eduFadeIn` slide-in animation
+- `.edu-watchout`: Amber warning callout for beginner pitfalls
+- `.order-field-group`: Adaptive ticket field grid (fields change per order type)
+- `.badge-red`: Red badge variant for danger/risk states
 
 ### TradingAcademy Lesson Curriculum
 

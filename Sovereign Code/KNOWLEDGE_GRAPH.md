@@ -15,7 +15,7 @@ graph TD
         UI --> StockPicker["StockPicker.jsx (5-Agent Thesis & Stepped Upskill Path)"]
         UI --> RiskMgr["QuantRiskManager.jsx (Position Calculator & Risk Spotlight)"]
         UI --> PrairieHub["QuantumPrairieHub.jsx (Midwest Hub)"]
-        UI --> Simulator["TradeSimulator.jsx (Paper Ticket)"]
+        UI --> Simulator["TradeSimulator.jsx (Order Type Literacy + Paper Ticket)"]
         UI --> Academy["TradingAcademy.jsx (Beginner & Intermediate Tracks)"]
     end
 
@@ -57,6 +57,7 @@ graph TD
 
     UpskillEngine -->|Stock Pick Upskill Tips| StockPicker
     Execution -->|Returns Order Ticket| Simulator
+    Simulator -->|Order Type Education| User
 ```
 
 ---
@@ -163,6 +164,8 @@ graph TD
 | **`Quantum Prairie Hub`** | `spotlights` | **IQMP & Quantum Corridor** | Links regional Midwest infrastructure to publicly traded stocks (`QUBT`, `IBM`, `NVDA`). |
 | **`StockPicker.jsx`** | `renders` | **5-Agent & Upskill Stepper** | Displays swarm results and interactive pre-trade checklist (+50 XP per item). |
 | **`TradingAcademy.jsx`**| `teaches` | **Beginner & Intermediate** | Teaches Beta hedging, RSI divergence, and ATR dynamic stop-losses. |
+| **`TradeSimulator.jsx`**| `teaches` | **Order Type Literacy** | Interactive selector for Market, Limit, Stop, Stop-Limit, Trailing Stop with inline education cards (Plain English, When Pros Use It, Watch Out). |
+| **`TradeSimulator.jsx`**| `adapts` | **Order Ticket Fields** | Ticket fields change per order type: Limit shows limit price, Stop shows trigger, Stop-Limit shows two prices, Trailing Stop shows trail amount + %. |
 | **`QuantRiskManager.jsx`**| `recalculates` | **Position Sizing** | Dynamically computes share count & contrasts naive vs quant risk sizing. |
 | **`data_fetcher.py`** | `fetches` | **Alpha Vantage API** | Pulls real OHLCV daily bars (`TIME_SERIES_DAILY`, free tier, key in `.env`). |
 | **`data_fetcher.py`** | `caches` | **Disk Cache (`Sovereign Code/data/`)** | Per-ticker JSON served while fresh (6h TTL); flagged `stale: true` when past TTL. |
@@ -193,7 +196,7 @@ Sovereign Code/
     │   ├── StockPicker.jsx       (Includes Interactive Pre-Trade Checklist & Mastery Progress)
     │   ├── QuantRiskManager.jsx  (Includes Risk Upskill Spotlight Widget)
     │   ├── QuantumPrairieHub.jsx
-    │   ├── TradeSimulator.jsx
+    │   ├── TradeSimulator.jsx    (Order Type Literacy: 5 order types + inline education cards)
     │   └── TradingAcademy.jsx    (Includes Beginner Foundations & Intermediate Mastery tracks)
-    └── index.css ──────────► Design Tokens, Upskill Stepper & Glassmorphism System
+    └── index.css ──────────► Design Tokens, Upskill Stepper, Order Type Selector & Glassmorphism System
 ```

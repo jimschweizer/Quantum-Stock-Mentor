@@ -41,7 +41,7 @@
 - 💎 **Glassmorphic Discovery Web App**:
   - Interactive ticker feed and real-time stock switching.
   - Interactive Position Size & Stop-Loss Calculator with adjustable portfolio capital ($1k-$100k) and risk tolerance sliders.
-  - Paper Trading Order Execution Simulator.
+  - Paper Trading Order Execution Simulator with **Order Type Literacy** — interactive selector for Market, Limit, Stop, Stop-Limit, and Trailing Stop orders with inline education cards.
   - Beginner & Intermediate Trading Academy with guided lesson tracks.
 
 ---
@@ -75,7 +75,7 @@ RJ-Stock/
 │       │   │   ├── StockPicker.jsx       # 5-Agent Analysis & Stepped Upskill Path
 │       │   │   ├── QuantRiskManager.jsx  # Interactive risk & position sizing calculator
 │       │   │   ├── QuantumPrairieHub.jsx # Midwest Quantum Prairie spotlight
-│       │   │   ├── TradeSimulator.jsx    # Simulated paper order ticket execution
+│       │   │   ├── TradeSimulator.jsx    # Order Type Literacy simulator (5 types + education cards)
 │       │   │   └── TradingAcademy.jsx    # Beginner & Intermediate trading lessons
 │       │   ├── App.jsx
 │       │   └── index.css                 # Dark-mode glassmorphism design system
@@ -146,6 +146,13 @@ npx vite      # same as `npm run dev`, uses the locally installed Vite
 
 4. **ATR Volatility-Adjusted Stop-Loss Sizing**:
    - Calculate stop loss distance dynamically using Average True Range to prevent premature stop-outs during market noise.
+
+5. **Order Type Literacy (5 Fundamental Order Types)**:
+   - ⚡ **Market Order**: Instant execution at best available price — teaches slippage risk on low-volume quantum stocks.
+   - 🎯 **Limit Order**: Price-controlled entry — teaches patience vs execution certainty tradeoff.
+   - 🛑 **Stop Order**: Downside protection trigger — teaches why stop ≠ guaranteed price (gap risk).
+   - 🔒 **Stop-Limit Order**: Two-price protection — teaches gap risk when both stop and limit are breached.
+   - 📈 **Trailing Stop**: Dynamic risk management — teaches letting winners run with auto-ratcheting gains.
 
 ---
 

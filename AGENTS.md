@@ -86,7 +86,7 @@ RJ-Stock/
 │               ├── StockPicker.jsx       # 5-Agent dashboard + upskill stepper + trend grid
 │               ├── QuantRiskManager.jsx  # Interactive risk & position sizing calculator
 │               ├── QuantumPrairieHub.jsx # Midwest Quantum Prairie spotlight
-│               ├── TradeSimulator.jsx    # Paper trade order ticket simulator
+│               ├── TradeSimulator.jsx    # Order Type Literacy simulator (5 types + education cards)
 │               └── TradingAcademy.jsx    # Beginner & Intermediate lesson curriculum
 │
 └── logs/                             # Runtime logs (gitignored)
@@ -222,7 +222,7 @@ Expected LLM JSON response schema: `{ "recommendation": str, "market_thesis": st
 | `StockPicker.jsx` | 5-Agent dashboard + upskill stepper | `analysis`, `loading`, `onRunAnalysis`, `userXP`, `userSkillLevel`, `onCompleteCheckitem` | `checkedItems: { [id]: bool }` |
 | `QuantRiskManager.jsx` | Interactive risk calculator | `ticker`, `price` | `accountSize`, `riskTolerancePct`, `volatility` |
 | `QuantumPrairieHub.jsx` | Midwest Quantum spotlight | `prairieData` | Stateless |
-| `TradeSimulator.jsx` | Paper trade simulator | `executionOrder`, `onSimulateTrade` | `orders: []`, `loading: bool` |
+| `TradeSimulator.jsx` | Order Type Literacy simulator (5 order types + inline education) | `executionOrder`, `onSimulateTrade` | `orders: []`, `loading: bool`, `selectedType: str` |
 | `TradingAcademy.jsx` | Lesson curriculum | — | `activeTab`, `activeLesson` |
 
 ### Tab Navigation Values
@@ -248,6 +248,15 @@ Expected LLM JSON response schema: `{ "recommendation": str, "market_thesis": st
 - `.btn-primary`: Quantum gradient, `translateY(-2px)` hover lift
 - `.dashboard-grid`: `repeat(auto-fit, minmax(320px, 1fr))`
 - `.xp-progress-bar`: Animated gradient fill for gamification
+
+**Order Type Selector System:**
+- `.order-type-grid`: 5-column responsive grid for order type cards
+- `.order-type-card`: Selectable card with icon, label, risk badge; `.active` state has cyan glow
+- `.ot-risk.low|medium|high`: Color-coded risk badges (green/amber/red)
+- `.edu-card`: Education explainer panel with `eduFadeIn` slide-in animation
+- `.edu-watchout`: Amber warning callout for beginner pitfalls
+- `.order-field-group`: Adaptive ticket field grid (fields change per order type)
+- `.badge-red`: Red badge variant for danger/risk states
 
 ---
 
